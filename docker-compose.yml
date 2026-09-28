@@ -1,0 +1,17 @@
+services:
+  n8n-upload-gateway:
+    build: .
+    container_name: n8n-upload-gateway
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    # Falls dieser Service im selben Docker-Netzwerk wie dein n8n-Stack laufen soll,
+    # damit N8N_WEBHOOK_URL z.B. http://n8n:5678/webhook/upload verwenden kann:
+    # networks:
+    #   - n8n-heimserver-docker_default
+
+# networks:
+#   n8n-heimserver-docker_default:
+#     external: true

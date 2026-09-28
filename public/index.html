@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Upload → n8n</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --border: #334155;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --success: #22c55e;
+    --error: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 24px;
+  }
+  .card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin: 0 0 6px;
+  }
+  p.sub {
+    color: var(--muted);
+    margin: 0 0 24px;
+    font-size: 0.9rem;
+  }
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.08);
+  }
+  .dropzone svg {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 12px;
+    color: var(--muted);
+  }
+  .dropzone p {
+    margin: 4px 0;
+  }
+  .dropzone .hint {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  input[type="file"] { display: none; }
+  .file-info {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    display: none;
+  }
+  .file-info.visible { display: block; }
+  button#uploadBtn {
+    margin-top: 20px;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button#uploadBtn:hover:not(:disabled) { background: var(--accent-hover); }
+  button#uploadBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    display: none;
+  }
+  .status.visible { display: block; }
+  .status.success { background: rgba(34, 197, 94, 0.12); border: 1px solid var(--success); color: var(--success); }
+  .status.error { background: rgba(239, 68, 68, 0.12); border: 1px solid var(--error); color: var(--error); }
+  .status.loading { background: rgba(148, 163, 184, 0.12); border: 1px solid var(--border); color: var(--muted); }
+  .progress-bar {
+    margin-top: 10px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width 0.1s;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Datei-Upload zu n8n</h1>
+    <p class="sub">PDF oder Bild hochladen – wird automatisch an deinen n8n-Workflow weitergeleitet.</p>
+
+    <div class="dropzone" id="dropzone">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+      </svg>
+      <p><strong>Datei hierher ziehen</strong> oder klicken zum Auswählen</p>
+      <p class="hint">PDF, PNG, JPG, WEBP oder GIF · max. 20 MB</p>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif" />
+
+    <div class="file-info" id="fileInfo"></div>
+
+    <button id="uploadBtn" disabled>Hochladen &amp; an n8n senden</button>
+
+    <div class="progress-bar" id="progressBar" style="display:none;">
+      <div class="progress-bar-fill" id="progressBarFill"></div>
+    </div>
+
+    <div class="status" id="status"></div>
+  </div>
+
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileInfo = document.getElementById('fileInfo');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const statusEl = document.getElementById('status');
+  const progressBar = document.getElementById('progressBar');
+  const progressBarFill = document.getElementById('progressBarFill');
+
+  let selectedFile = null;
+
+  dropzone.addEventListener('click', () => fileInput.click());
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file) {
+    selectedFile = file;
+    const sizeKb = (file.size / 1024).toFixed(1);
+    fileInfo.textContent = `${file.name} (${sizeKb} KB)`;
+    fileInfo.classList.add('visible');
+    uploadBtn.disabled = false;
+    hideStatus();
+  }
+
+  function showStatus(type, message) {
+    statusEl.className = `status visible ${type}`;
+    statusEl.textContent = message;
+  }
+  function hideStatus() {
+    statusEl.className = 'status';
+    statusEl.textContent = '';
+  }
+
+  uploadBtn.addEventListener('click', () => {
+    if (!selectedFile) return;
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    uploadBtn.disabled = true;
+    progressBar.style.display = 'block';
+    progressBarFill.style.width = '0%';
+    showStatus('loading', 'Wird hochgeladen und an n8n weitergeleitet…');
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/upload');
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        progressBarFill.style.width = pct + '%';
+      }
+    };
+
+    xhr.onload = () => {
+      uploadBtn.disabled = false;
+      progressBar.style.display = 'none';
+      try {
+        const res = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300 && res.success) {
+          showStatus('success', 'Erfolgreich an n8n gesendet ✓');
+        } else {
+          showStatus('error', res.error || 'Fehler beim Senden an n8n.');
+        }
+      } catch (err) {
+        showStatus('error', 'Unerwartete Antwort vom Server.');
+      }
+    };
+
+    xhr.onerror = () => {
+      uploadBtn.disabled = false;
+      progressBar.style.display = 'none';
+      showStatus('error', 'Netzwerkfehler beim Upload.');
+    };
+
+    xhr.send(formData);
+  });
+</script>
+</body>
+</html>

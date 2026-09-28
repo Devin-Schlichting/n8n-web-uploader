@@ -1,0 +1,19 @@
+{
+  "name": "n8n-upload-gateway",
+  "version": "1.0.0",
+  "description": "Kleine Webanwendung zum Hochladen von PDFs/Bildern, die die Datei an einen n8n-Webhook weiterleitet.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "form-data": "^4.0.1",
+    "multer": "^2.4.0"
+  }
+}
