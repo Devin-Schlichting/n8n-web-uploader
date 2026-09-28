@@ -132,7 +132,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
       </svg>
       <p><strong>Datei hierher ziehen</strong> oder klicken zum Auswählen</p>
-      <p class="hint">PDF, PNG, JPG, WEBP oder GIF · max. 20 MB</p>
+      <p class="hint">PDF, PNG, JPG, WEBP oder GIF · max. <span id="maxSize">50</span> MB</p>
     </div>
     <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif" />
 
@@ -157,6 +157,18 @@
   const progressBarFill = document.getElementById('progressBarFill');
 
   let selectedFile = null;
+  let maxFileSizeMb = 50;
+
+  // Größenlimit vom Server holen, damit Anzeige und Prüfung zu MAX_FILE_SIZE_MB passen
+  fetch('/api/config')
+    .then((r) => r.json())
+    .then((config) => {
+      if (config.maxFileSizeMb) {
+        maxFileSizeMb = config.maxFileSizeMb;
+        document.getElementById('maxSize').textContent = maxFileSizeMb;
+      }
+    })
+    .catch(() => {});
 
   dropzone.addEventListener('click', () => fileInput.click());
 
@@ -178,12 +190,20 @@
   });
 
   function handleFile(file) {
-    selectedFile = file;
     const sizeKb = (file.size / 1024).toFixed(1);
     fileInfo.textContent = `${file.name} (${sizeKb} KB)`;
     fileInfo.classList.add('visible');
-    uploadBtn.disabled = false;
     hideStatus();
+
+    if (file.size > maxFileSizeMb * 1024 * 1024) {
+      selectedFile = null;
+      uploadBtn.disabled = true;
+      showStatus('error', `Datei ist zu groß (max. ${maxFileSizeMb} MB).`);
+      return;
+    }
+
+    selectedFile = file;
+    uploadBtn.disabled = false;
   }
 
   function showStatus(type, message) {
